@@ -16,20 +16,13 @@ const MemberCard = {
   mode: 'sheet',
   onClose: null,
 
-  // Förenklade access-grupper
-  ACCESS_GROUPS: [
-    { key: 'vegastaden', name: 'Alla klubbar', icon: '🏆' },
-    { key: 'tungelsta', name: 'Tungelsta + VH', icon: '🏋️' },
-    { key: 'ungdom', name: 'Ungdom', icon: '👶' },
-    { key: 'egym', name: 'EGYM', icon: '⚡' }
-  ],
-
-  // Gym-namn för historik etc
+  // Gym-namn mappning
   GYM_NAMES: {
     vegastaden: 'Vegastaden',
     tungelsta: 'Tungelsta',
     vasterhaninge: 'Västerhaninge',
-    egym: 'EGYM'
+    egym: 'EGYM',
+    ungdom: 'Ungdom'
   },
 
   /**
@@ -378,20 +371,15 @@ const MemberCard = {
   },
 
   /**
-   * Rendera access-grid (förenklad)
-   * - Vegastaden = Alla klubbar
-   * - Tungelsta + VH alltid ihop
-   * - Ungdom separat
-   * - EGYM separat tillägg
+   * Rendera access-grid
    */
   renderAccessGrid(canOpen) {
-    return this.ACCESS_GROUPS.map(group => {
-      const hasAccess = canOpen[group.key] === true;
+    return Object.entries(this.GYM_NAMES).map(([key, name]) => {
+      const hasAccess = canOpen[key] === true;
       return `
         <div class="mc-access-item ${hasAccess ? 'mc-access-granted' : 'mc-access-denied'}">
-          <span class="mc-access-icon">${group.icon}</span>
-          <span class="mc-access-name">${group.name}</span>
-          <span style="margin-left:auto">${hasAccess ? '✓' : ''}</span>
+          <span class="mc-access-icon">${hasAccess ? '&#128994;' : '&#128308;'}</span>
+          <span class="mc-access-name">${name}</span>
         </div>
       `;
     }).join('');
