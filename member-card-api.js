@@ -7,7 +7,7 @@ const MemberCardAPI = {
   // API endpoints
   MEMBERS_API: 'https://api.coregym.club',
   STATS_API: 'https://stats.coregym.club',
-  PUSH_API: 'https://push.coregym.club',
+  PUSH_API: 'https://coregym-push-api.gustav-brydner.workers.dev',
 
   /**
    * Beräkna ålder från personnummer eller födelsedatum

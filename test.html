@@ -72,6 +72,14 @@
     function searchSheet() {
       MemberCard.search({ mode: 'sheet' });
     }
+
+    // Auto-öppna om ?member=ID finns i URL
+    const params = new URLSearchParams(window.location.search);
+    const memberId = params.get('member') || params.get('id');
+    const mode = params.get('mode') || 'sheet';
+    if (memberId) {
+      MemberCard.open(memberId, { mode });
+    }
   </script>
 </body>
 </html>

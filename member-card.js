@@ -681,7 +681,7 @@ const MemberCard = {
     }
 
     try {
-      const PUSH_API = 'https://push.coregym.club';
+      const PUSH_API = 'https://coregym-push-api.gustav-brydner.workers.dev';
 
       if (isScheduled && scheduleTime) {
         // Schemalägg (om API stödjer det)
@@ -709,7 +709,7 @@ const MemberCard = {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            odlId: memberId,
+            memberId: memberId,
             title: title || 'Core Gym 💪',
             body
           })
