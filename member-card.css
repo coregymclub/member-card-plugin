@@ -347,49 +347,18 @@
   color: #fff;
 }
 
-/* Access Grid */
-.mc-access-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  background: #333;
-}
-
-.mc-access-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
-  background: #2a2a2a;
-}
-
-.mc-access-icon {
-  font-size: 16px;
-}
-
-.mc-access-name {
-  font-size: 14px;
-  color: #fff;
-}
-
-.mc-access-granted {
-  background: rgba(34, 197, 94, 0.15);
-}
-
-.mc-access-granted .mc-access-icon {
+/* Access Display */
+.mc-access-text {
+  padding: 14px;
+  font-size: 15px;
+  font-weight: 500;
   color: #22c55e;
 }
 
-.mc-access-denied {
-  background: rgba(107, 114, 128, 0.15);
-}
-
-.mc-access-denied .mc-access-icon {
-  color: #6b7280;
-}
-
-.mc-access-denied .mc-access-name {
-  color: #888;
+.mc-no-access {
+  padding: 14px;
+  font-size: 14px;
+  color: #ef4444;
 }
 
 /* Membership Cards */

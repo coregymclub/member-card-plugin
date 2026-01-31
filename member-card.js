@@ -260,9 +260,7 @@ const MemberCard = {
             <span class="mc-section-title">Dörraccess</span>
           </div>
           <div class="mc-section-content">
-            <div class="mc-access-grid">
-              ${this.renderAccessGrid(access.canOpen)}
-            </div>
+            ${this.renderAccess(access.canOpen)}
           </div>
         </div>
 
@@ -378,23 +376,28 @@ const MemberCard = {
   },
 
   /**
-   * Rendera access-grid (förenklad)
-   * - Vegastaden = Alla klubbar
-   * - Tungelsta + VH alltid ihop
-   * - Ungdom separat
-   * - EGYM separat tillägg
+   * Rendera access (förenklad - visar bara vad de HAR)
    */
-  renderAccessGrid(canOpen) {
-    return this.ACCESS_GROUPS.map(group => {
-      const hasAccess = canOpen[group.key] === true;
-      return `
-        <div class="mc-access-item ${hasAccess ? 'mc-access-granted' : 'mc-access-denied'}">
-          <span class="mc-access-icon">${group.icon}</span>
-          <span class="mc-access-name">${group.name}</span>
-          <span style="margin-left:auto">${hasAccess ? '✓' : ''}</span>
-        </div>
-      `;
-    }).join('');
+  renderAccess(canOpen) {
+    const parts = [];
+
+    if (canOpen.vegastaden) {
+      parts.push('Alla klubbar');
+    } else if (canOpen.tungelsta || canOpen.vasterhaninge) {
+      parts.push('Tungelsta + VH');
+    } else if (canOpen.ungdom) {
+      parts.push('Ungdom');
+    }
+
+    if (canOpen.egym) {
+      parts.push('EGYM');
+    }
+
+    if (parts.length === 0) {
+      return '<div class="mc-no-access">Ingen dörraccess</div>';
+    }
+
+    return `<div class="mc-access-text">✓ ${parts.join(' + ')}</div>`;
   },
 
   /**
