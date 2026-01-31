@@ -246,10 +246,7 @@ const MemberCard = {
             <div class="mc-name">${this.escapeHtml(m.name)}</div>
             <div class="mc-id">Medlem #${m.id} ${m.cardNumber ? `• Kort: ${m.cardNumber}` : ''}</div>
             <div class="mc-badges">
-              ${age.isMinor ? '<span class="mc-badge mc-badge-minor">&#128276; Under 18</span>' : ''}
-              ${age.isAdult ? '<span class="mc-badge mc-badge-adult">&#9989; Vuxen</span>' : ''}
-              ${memberships.active.length > 0 ? '<span class="mc-badge mc-badge-active">Aktivt medlemskap</span>' : '<span class="mc-badge mc-badge-inactive">Inget aktivt</span>'}
-              ${m.archived ? '<span class="mc-badge mc-badge-archived">Arkiverad</span>' : ''}
+              ${this.renderProfileBadges(m, age, memberships)}
             </div>
           </div>
         </div>
@@ -318,7 +315,11 @@ const MemberCard = {
               </div>
               <div class="mc-info-row">
                 <span class="mc-info-label">Ålder</span>
-                <span class="mc-info-value">${age.years !== null ? `${age.years} år` : '-'}</span>
+                <span class="mc-info-value">
+                  ${age.years !== null ? `${age.years} år` : '-'}
+                  ${age.birthday ? `<span class="mc-info-sub">(${age.birthday})</span>` : ''}
+                  ${age.missingPersonalNumber ? '<span class="mc-badge mc-badge-warning">Saknar personnummer</span>' : ''}
+                </span>
               </div>
             </div>
           </div>
@@ -381,6 +382,20 @@ const MemberCard = {
             ${this.renderPrefs(data.prefs)}
           </div>
         </div>
+
+        <!-- Push-notis -->
+        <div class="mc-section">
+          <div class="mc-section-header">
+            <span class="mc-section-title">Push-notis</span>
+            ${data.push?.hasSubscription
+              ? `<span class="mc-section-badge mc-badge-success">&#128276; Aktiv</span>`
+              : `<span class="mc-section-badge mc-badge-muted">Ej aktiverad</span>`
+            }
+          </div>
+          <div class="mc-section-content">
+            ${this.renderPushSection(data.push)}
+          </div>
+        </div>
       </div>
 
       <div class="mc-action-bar">
@@ -395,6 +410,55 @@ const MemberCard = {
         </button>
       </div>
     `;
+  },
+
+  /**
+   * Rendera profil-badges (AG, pris, hemmaklubb, etc)
+   */
+  renderProfileBadges(member, age, memberships) {
+    const badges = [];
+
+    // Under 18 varning
+    if (age.isMinor) {
+      badges.push('<span class="mc-badge mc-badge-minor">-18</span>');
+    }
+
+    // Arkiverad
+    if (member.archived) {
+      badges.push('<span class="mc-badge mc-badge-archived">Arkiverad</span>');
+      return badges.join('');
+    }
+
+    // Hemmaklubb
+    const homeClub = this.SITE_NAMES[member.homesite];
+    if (homeClub) {
+      const shortName = homeClub.substring(0, 4).toUpperCase();
+      badges.push(`<span class="mc-badge mc-badge-club">${shortName}</span>`);
+    }
+
+    // Aktivt medlemskap - visa AG + pris
+    if (memberships.active.length > 0) {
+      const card = memberships.active[0]; // Första aktiva kortet
+
+      // Autogiro badge
+      if (card.isAutogiro) {
+        badges.push('<span class="mc-badge mc-badge-ag">AG</span>');
+      }
+
+      // Pris badge
+      if (card.price) {
+        badges.push(`<span class="mc-badge mc-badge-price">${Math.round(card.price)} kr</span>`);
+      }
+
+      // Rabatt
+      if (card.discount) {
+        badges.push(`<span class="mc-badge mc-badge-discount">${card.discount.name}</span>`);
+      }
+    } else {
+      badges.push('<span class="mc-badge mc-badge-inactive">Inaktiv</span>');
+    }
+
+    return badges.join('');
   },
 
   /**
@@ -446,7 +510,7 @@ const MemberCard = {
           </div>
           ${card.discount ? `<div class="mc-membership-discount">&#127873; ${card.discount.name} (-${card.discount.amount})</div>` : ''}
           <div class="mc-membership-actions">
-            <button class="mc-small-btn" onclick="MemberCard.sendReceipt(${card.id})">&#129534; Skicka kvitto</button>
+            <button class="mc-small-btn" onclick="MemberCard.showReceiptDialog(${card.id})">&#129534; Skicka kvitto</button>
           </div>
         </div>
       `;
@@ -525,6 +589,150 @@ const MemberCard = {
   },
 
   /**
+   * Rendera push-sektion
+   */
+  renderPushSection(pushData) {
+    const hasSubscription = pushData?.hasSubscription;
+    const deviceCount = pushData?.deviceCount || 0;
+
+    if (!hasSubscription) {
+      return `
+        <div class="mc-push-disabled">
+          <p style="color:#888;margin:0">Medlemmen har inte aktiverat push-notiser i appen.</p>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="mc-push-form">
+        <div class="mc-push-status">
+          <span style="color:#22c55e">&#10003; ${deviceCount} enhet${deviceCount > 1 ? 'er' : ''} registrerad${deviceCount > 1 ? 'e' : ''}</span>
+        </div>
+
+        <div class="mc-form-group">
+          <label class="mc-form-label">Titel</label>
+          <input type="text" class="mc-form-input" id="mcPushTitle" value="Core Gym 💪" placeholder="Titel">
+        </div>
+
+        <div class="mc-form-group">
+          <label class="mc-form-label">Meddelande</label>
+          <textarea class="mc-form-textarea" id="mcPushBody" rows="2" placeholder="Skriv ditt meddelande..."></textarea>
+        </div>
+
+        <div class="mc-push-timing">
+          <label class="mc-radio-label">
+            <input type="radio" name="mcPushTiming" value="now" checked onchange="MemberCard.togglePushTiming()">
+            <span>Skicka direkt</span>
+          </label>
+          <label class="mc-radio-label">
+            <input type="radio" name="mcPushTiming" value="scheduled" onchange="MemberCard.togglePushTiming()">
+            <span>Schemalägg</span>
+          </label>
+        </div>
+
+        <div class="mc-push-schedule" id="mcPushSchedule" style="display:none">
+          <input type="datetime-local" class="mc-form-input" id="mcPushScheduleTime">
+        </div>
+
+        <button class="mc-btn mc-btn-primary mc-push-send-btn" onclick="MemberCard.sendPush()">
+          &#128276; Skicka push
+        </button>
+      </div>
+    `;
+  },
+
+  /**
+   * Toggle push timing (direkt/schemalägg)
+   */
+  togglePushTiming() {
+    const scheduled = document.querySelector('input[name="mcPushTiming"][value="scheduled"]')?.checked;
+    const scheduleEl = document.getElementById('mcPushSchedule');
+    if (scheduleEl) {
+      scheduleEl.style.display = scheduled ? 'block' : 'none';
+
+      // Sätt default tid till 1 timme framåt
+      if (scheduled) {
+        const timeInput = document.getElementById('mcPushScheduleTime');
+        if (timeInput && !timeInput.value) {
+          const now = new Date();
+          now.setHours(now.getHours() + 1);
+          now.setMinutes(0);
+          timeInput.value = now.toISOString().slice(0, 16);
+        }
+      }
+    }
+  },
+
+  /**
+   * Skicka push-notis
+   */
+  async sendPush() {
+    if (!this.currentData) return;
+
+    const memberId = this.currentData.member.id;
+    const title = document.getElementById('mcPushTitle')?.value?.trim();
+    const body = document.getElementById('mcPushBody')?.value?.trim();
+    const isScheduled = document.querySelector('input[name="mcPushTiming"][value="scheduled"]')?.checked;
+    const scheduleTime = document.getElementById('mcPushScheduleTime')?.value;
+
+    if (!body) {
+      this.showToast('Skriv ett meddelande', 'error');
+      return;
+    }
+
+    try {
+      const PUSH_API = 'https://push.coregym.club';
+
+      if (isScheduled && scheduleTime) {
+        // Schemalägg (om API stödjer det)
+        const res = await fetch(`${PUSH_API}/schedule`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            memberId,
+            title: title || 'Core Gym 💪',
+            body,
+            scheduledFor: new Date(scheduleTime).toISOString()
+          })
+        });
+
+        if (!res.ok) {
+          // Fallback: skicka direkt om schedule inte stöds
+          throw new Error('Schemaläggning stöds inte ännu');
+        }
+
+        const data = await res.json();
+        this.showToast(`Schemalagd till ${new Date(scheduleTime).toLocaleString('sv-SE')}`, 'success');
+      } else {
+        // Skicka direkt
+        const res = await fetch(`${PUSH_API}/send`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            odlId: memberId,
+            title: title || 'Core Gym 💪',
+            body
+          })
+        });
+
+        const data = await res.json();
+
+        if (data.sent > 0 || data.success) {
+          this.showToast('Push skickad!', 'success');
+          // Rensa formuläret
+          const bodyInput = document.getElementById('mcPushBody');
+          if (bodyInput) bodyInput.value = '';
+        } else {
+          this.showToast(data.error || 'Kunde inte skicka', 'error');
+        }
+      }
+    } catch (error) {
+      console.error('Push error:', error);
+      this.showToast(error.message || 'Något gick fel', 'error');
+    }
+  },
+
+  /**
    * Rendera statistik (samma som kiosk visar)
    */
   renderStats(stats) {
@@ -535,41 +743,130 @@ const MemberCard = {
     return `
       <div class="mc-stats-grid">
         <div class="mc-stat-item">
-          <div class="mc-stat-value">${stats.totalVisits || 0}</div>
+          <div class="mc-stat-value">${stats.total || stats.totalVisits || 0}</div>
           <div class="mc-stat-label">Totalt</div>
         </div>
         <div class="mc-stat-item">
-          <div class="mc-stat-value">${stats.monthVisits || stats.thisMonth || 0}</div>
+          <div class="mc-stat-value">${stats.thisMonth || stats.monthVisits || 0}</div>
           <div class="mc-stat-label">Denna månad</div>
         </div>
         <div class="mc-stat-item">
-          <div class="mc-stat-value">${stats.streak || 0}</div>
-          <div class="mc-stat-label">Streak</div>
+          <div class="mc-stat-value">${stats.thisYear || 0}</div>
+          <div class="mc-stat-label">I år</div>
         </div>
         <div class="mc-stat-item">
-          <div class="mc-stat-value">${stats.weekAvg || '-'}</div>
-          <div class="mc-stat-label">Snitt/vecka</div>
+          <div class="mc-stat-value">${stats.streak || stats.weekAvg || '-'}</div>
+          <div class="mc-stat-label">Streak</div>
         </div>
       </div>
     `;
+  },
+
+  // Site ID till gym-namn mappning
+  SITE_NAMES: {
+    1: 'Vegastaden',
+    2: 'Tungelsta',
+    3: 'Västerhaninge',
+    4: 'EGYM'
+  },
+
+  // SVG ikoner för sources (inline SVG för bättre kontroll)
+  SOURCE_ICONS: {
+    'mobile-shake': { icon: 'mobile', color: '#22c55e', title: 'Shake check-in (mobil)' },
+    'mobile-twofinger': { icon: 'mobile', color: '#22c55e', title: 'Two-finger tap (mobil)' },
+    'mobile-location': { icon: 'location', color: '#3b82f6', title: 'Geolocation (mobil)' },
+    'mobile': { icon: 'mobile', color: '#22c55e', title: 'Mobil check-in' },
+    'mobile-focus': { icon: 'mobile', color: '#22c55e', title: 'Mobil träningspass' },
+    'kiosk': { icon: 'screen', color: '#a855f7', title: 'Skärm (kiosk)' },
+    'kiosk-api': { icon: 'screen', color: '#a855f7', title: 'Skärm (kiosk API)' },
+    'kiosk-card': { icon: 'card', color: '#f59e0b', title: 'Kort på kiosk' },
+    'kiosk-phone': { icon: 'mobile', color: '#22c55e', title: 'Telefon på kiosk' },
+    'card': { icon: 'card', color: '#f59e0b', title: 'Kort' },
+    'door': { icon: 'door', color: '#ef4444', title: 'Dörr (utan skärm)' },
+    'door_entry': { icon: 'door', color: '#ef4444', title: 'Dörr-entry' },
+    'ninja': { icon: 'door', color: '#ef4444', title: 'Dörr-entry (ninja)' },
+    'screen': { icon: 'screen', color: '#a855f7', title: 'Skärm check-in' },
+    'staff': { icon: 'user', color: '#6b7280', title: 'Personal check-in' },
+    'backfill': { icon: 'download', color: '#6b7280', title: 'Backfill (importerad)' },
+    'unknown': { icon: 'question', color: '#6b7280', title: 'Okänd källa' }
+  },
+
+  // SVG paths för ikoner
+  SVG_PATHS: {
+    mobile: 'M7 2a2 2 0 00-2 2v16a2 2 0 002 2h10a2 2 0 002-2V4a2 2 0 00-2-2H7zm5 18a1 1 0 100-2 1 1 0 000 2z',
+    screen: 'M4 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm6 12h4v2h-4v-2z',
+    card: 'M4 4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V6a2 2 0 00-2-2H4zm0 4h16v2H4V8zm0 4h8v4H4v-4z',
+    door: 'M3 4a1 1 0 011-1h12a1 1 0 011 1v16a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm11 8a1 1 0 100-2 1 1 0 000 2z',
+    user: 'M12 12a4 4 0 100-8 4 4 0 000 8zm0 2c-4 0-8 2-8 4v2h16v-2c0-2-4-4-8-4z',
+    location: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z',
+    download: 'M12 2v12m0 0l-4-4m4 4l4-4M4 18h16',
+    question: 'M12 2a10 10 0 100 20 10 10 0 000-20zm0 14a1 1 0 110 2 1 1 0 010-2zm1-3v1h-2v-2a2 2 0 114 0h-2z'
+  },
+
+  /**
+   * Generera SVG ikon
+   */
+  renderSvgIcon(iconName, color, size = 18) {
+    const path = this.SVG_PATHS[iconName] || this.SVG_PATHS.question;
+    return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="${color}" style="flex-shrink:0"><path d="${path}"/></svg>`;
+  },
+
+  /**
+   * Hämta ikon HTML för source
+   */
+  getSourceIconHtml(source) {
+    const s = (source || 'unknown').toLowerCase();
+    const info = this.SOURCE_ICONS[s] || this.SOURCE_ICONS['unknown'];
+    return {
+      html: this.renderSvgIcon(info.icon, info.color, 18),
+      title: info.title
+    };
   },
 
   /**
    * Rendera besökshistorik
    */
   renderHistory(visits) {
-    if (visits.length === 0) {
+    if (!visits || visits.length === 0) {
       return '<div class="mc-journal-empty">Inga registrerade besök</div>';
     }
 
+    // Filtrera bort duplikat och backfill (samma timestamp inom 5 sekunder)
+    const seen = new Set();
+    const filtered = visits.filter(v => {
+      const timestamp = new Date(v.checkinTime || v.date).getTime();
+      // Runda av till 5 sekunder för att hitta duplikat
+      const roundedTime = Math.floor(timestamp / 5000);
+      const key = `${v.site || v.gym}-${roundedTime}`;
+
+      // Hoppa över backfill om vi redan har en riktig entry
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+
     return `
       <div class="mc-history-list">
-        ${visits.map(v => `
-          <div class="mc-history-item">
-            <span class="mc-history-gym">${this.GYM_NAMES[v.gym] || v.gym || 'Okänt'}</span>
-            <span class="mc-history-date">${this.formatDate(v.checkinTime || v.date)}</span>
-          </div>
-        `).join('')}
+        ${filtered.map(v => {
+          // Hantera både site (nummer) och gym (sträng)
+          const gymName = v.site
+            ? (this.SITE_NAMES[v.site] || v.siteName || `Gym ${v.site}`)
+            : (this.GYM_NAMES[v.gym] || v.gym || 'Okänt');
+
+          // Source-ikon (SVG)
+          const sourceInfo = this.getSourceIconHtml(v.source);
+
+          return `
+            <div class="mc-history-item">
+              <span class="mc-history-source" title="${sourceInfo.title}">${sourceInfo.html}</span>
+              <span class="mc-history-gym">${gymName}</span>
+              <span class="mc-history-date">${this.formatDate(v.checkinTime || v.date)}</span>
+              ${v.duration ? `<span class="mc-history-duration">${v.duration} min</span>` : ''}
+            </div>
+          `;
+        }).join('')}
       </div>
     `;
   },
@@ -594,13 +891,100 @@ const MemberCard = {
   },
 
   /**
+   * Visa dialog för att välja kvittoperiod
+   */
+  showReceiptDialog(cardId) {
+    if (!this.currentData) return;
+
+    const today = new Date();
+    const yearStart = `${today.getFullYear()}-01-01`;
+    const todayStr = today.toISOString().split('T')[0];
+    const lastYearStart = `${today.getFullYear() - 1}-01-01`;
+    const lastYearEnd = `${today.getFullYear() - 1}-12-31`;
+
+    // Skapa dialog
+    const dialog = document.createElement('div');
+    dialog.className = 'mc-receipt-dialog';
+    dialog.innerHTML = `
+      <div class="mc-receipt-dialog-content">
+        <div class="mc-receipt-dialog-header">
+          <h3>Skicka kvitto</h3>
+          <button class="mc-receipt-dialog-close" onclick="this.closest('.mc-receipt-dialog').remove()">&times;</button>
+        </div>
+        <div class="mc-receipt-dialog-body">
+          <p>Välj period för kvittot:</p>
+          <div class="mc-receipt-options">
+            <button class="mc-receipt-option mc-receipt-option-selected" data-from="${yearStart}" data-to="${todayStr}">
+              <strong>Årskvitto ${today.getFullYear()}</strong>
+              <span>${yearStart} - ${todayStr}</span>
+            </button>
+            <button class="mc-receipt-option" data-from="${lastYearStart}" data-to="${lastYearEnd}">
+              <strong>Hela ${today.getFullYear() - 1}</strong>
+              <span>${lastYearStart} - ${lastYearEnd}</span>
+            </button>
+            <button class="mc-receipt-option" data-custom="true">
+              <strong>Anpassad period</strong>
+              <span>Välj datum</span>
+            </button>
+          </div>
+          <div class="mc-receipt-custom-dates" style="display:none">
+            <label>Från: <input type="date" id="mcReceiptFrom" value="${yearStart}"></label>
+            <label>Till: <input type="date" id="mcReceiptTo" value="${todayStr}"></label>
+          </div>
+        </div>
+        <div class="mc-receipt-dialog-footer">
+          <button class="mc-btn mc-btn-secondary" onclick="this.closest('.mc-receipt-dialog').remove()">Avbryt</button>
+          <button class="mc-btn mc-btn-primary" id="mcSendReceiptBtn">Skicka kvitto</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(dialog);
+
+    // Hantera val av period
+    let selectedFrom = yearStart;
+    let selectedTo = todayStr;
+
+    dialog.querySelectorAll('.mc-receipt-option').forEach(btn => {
+      btn.addEventListener('click', () => {
+        dialog.querySelectorAll('.mc-receipt-option').forEach(b => b.classList.remove('mc-receipt-option-selected'));
+        btn.classList.add('mc-receipt-option-selected');
+
+        if (btn.dataset.custom) {
+          dialog.querySelector('.mc-receipt-custom-dates').style.display = 'flex';
+          selectedFrom = dialog.querySelector('#mcReceiptFrom').value;
+          selectedTo = dialog.querySelector('#mcReceiptTo').value;
+        } else {
+          dialog.querySelector('.mc-receipt-custom-dates').style.display = 'none';
+          selectedFrom = btn.dataset.from;
+          selectedTo = btn.dataset.to;
+        }
+      });
+    });
+
+    // Uppdatera custom dates
+    dialog.querySelector('#mcReceiptFrom')?.addEventListener('change', (e) => {
+      selectedFrom = e.target.value;
+    });
+    dialog.querySelector('#mcReceiptTo')?.addEventListener('change', (e) => {
+      selectedTo = e.target.value;
+    });
+
+    // Skicka kvitto
+    dialog.querySelector('#mcSendReceiptBtn').addEventListener('click', async () => {
+      dialog.remove();
+      await this.sendReceipt(cardId, selectedFrom, selectedTo);
+    });
+  },
+
+  /**
    * Skicka kvitto
    */
-  async sendReceipt(cardId) {
+  async sendReceipt(cardId, fromDate, toDate) {
     if (!this.currentData) return;
 
     try {
-      await MemberCardAPI.sendReceipt(this.currentData.member.id, cardId);
+      await MemberCardAPI.sendReceipt(this.currentData.member.id, cardId, { fromDate, toDate });
       this.showToast('Kvitto skickat!', 'success');
     } catch (error) {
       this.showToast(error.message, 'error');

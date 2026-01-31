@@ -259,6 +259,40 @@
   color: #9ca3af;
 }
 
+.mc-badge-club {
+  background: rgba(59, 130, 246, 0.2);
+  color: #3b82f6;
+}
+
+.mc-badge-ag {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+  font-weight: 700;
+}
+
+.mc-badge-price {
+  background: rgba(168, 85, 247, 0.2);
+  color: #a855f7;
+}
+
+.mc-badge-discount {
+  background: rgba(251, 191, 36, 0.2);
+  color: #fbbf24;
+}
+
+.mc-badge-warning {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  font-size: 10px;
+  margin-left: 6px;
+}
+
+.mc-info-sub {
+  color: #888;
+  font-size: 12px;
+  margin-left: 4px;
+}
+
 /* Section */
 .mc-section {
   margin-bottom: 20px;
@@ -515,20 +549,36 @@
 
 .mc-history-item {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 10px;
   padding: 12px 14px;
   background: #2a2a2a;
+}
+
+.mc-history-source {
+  font-size: 16px;
+  width: 24px;
+  text-align: center;
+  flex-shrink: 0;
+  cursor: help;
 }
 
 .mc-history-gym {
   font-size: 14px;
   color: #fff;
+  flex: 1;
 }
 
 .mc-history-date {
   font-size: 13px;
   color: #888;
+  flex-shrink: 0;
+}
+
+.mc-history-duration {
+  font-size: 12px;
+  color: #666;
+  flex-shrink: 0;
 }
 
 /* Prefs */
@@ -723,4 +773,267 @@
   .mc-access-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Receipt Dialog */
+.mc-receipt-dialog {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.mc-receipt-dialog-content {
+  background: #1c1b1d;
+  border-radius: 16px;
+  max-width: 400px;
+  width: 100%;
+  overflow: hidden;
+}
+
+.mc-receipt-dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #333;
+}
+
+.mc-receipt-dialog-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #fff;
+}
+
+.mc-receipt-dialog-close {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.mc-receipt-dialog-close:hover {
+  color: #fff;
+}
+
+.mc-receipt-dialog-body {
+  padding: 20px;
+}
+
+.mc-receipt-dialog-body p {
+  margin: 0 0 16px 0;
+  color: #aaa;
+  font-size: 14px;
+}
+
+.mc-receipt-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mc-receipt-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 12px 16px;
+  background: #2a2a2c;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.mc-receipt-option:hover {
+  background: #333;
+}
+
+.mc-receipt-option-selected {
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.mc-receipt-option strong {
+  color: #fff;
+  font-size: 14px;
+  margin-bottom: 2px;
+}
+
+.mc-receipt-option span {
+  color: #888;
+  font-size: 12px;
+}
+
+.mc-receipt-custom-dates {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #333;
+}
+
+.mc-receipt-custom-dates label {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: #aaa;
+  font-size: 12px;
+}
+
+.mc-receipt-custom-dates input {
+  padding: 8px 10px;
+  background: #2a2a2c;
+  border: 1px solid #444;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 14px;
+}
+
+.mc-receipt-custom-dates input:focus {
+  outline: none;
+  border-color: #22c55e;
+}
+
+.mc-receipt-dialog-footer {
+  display: flex;
+  gap: 10px;
+  padding: 16px 20px;
+  border-top: 1px solid #333;
+  justify-content: flex-end;
+}
+
+.mc-btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s ease;
+}
+
+.mc-btn-secondary {
+  background: #2a2a2c;
+  color: #fff;
+}
+
+.mc-btn-secondary:hover {
+  background: #333;
+}
+
+.mc-btn-primary {
+  background: #22c55e;
+  color: #fff;
+}
+
+.mc-btn-primary:hover {
+  background: #16a34a;
+}
+
+/* Push Section */
+.mc-push-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mc-push-status {
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.mc-push-disabled {
+  padding: 16px;
+  background: #2a2a2c;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.mc-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mc-form-label {
+  font-size: 12px;
+  color: #888;
+  font-weight: 500;
+}
+
+.mc-form-input,
+.mc-form-textarea {
+  padding: 10px 12px;
+  background: #2a2a2c;
+  border: 1px solid #444;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.mc-form-input:focus,
+.mc-form-textarea:focus {
+  outline: none;
+  border-color: #22c55e;
+}
+
+.mc-form-textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.mc-push-timing {
+  display: flex;
+  gap: 16px;
+}
+
+.mc-radio-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #ccc;
+  cursor: pointer;
+}
+
+.mc-radio-label input[type="radio"] {
+  accent-color: #22c55e;
+}
+
+.mc-push-schedule {
+  margin-top: -4px;
+}
+
+.mc-push-send-btn {
+  margin-top: 8px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.mc-badge-success {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+}
+
+.mc-badge-muted {
+  background: rgba(136, 136, 136, 0.15);
+  color: #888;
 }
