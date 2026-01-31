@@ -254,13 +254,46 @@ const MemberCard = {
           </div>
         </div>
 
-        <!-- Dörraccess -->
+        <!-- Inpassering -->
         <div class="mc-section">
           <div class="mc-section-header">
-            <span class="mc-section-title">Dörraccess</span>
+            <span class="mc-section-title">Inpassering</span>
           </div>
           <div class="mc-section-content">
-            ${this.renderAccess(access.canOpen)}
+            <div class="mc-info-grid">
+              <div class="mc-info-row">
+                <span class="mc-info-label">Behörighet</span>
+                <span class="mc-info-value">${this.renderAccessText(access.canOpen)}</span>
+              </div>
+              <div class="mc-info-row">
+                <span class="mc-info-label">Kort-access</span>
+                <span class="mc-info-value">${m.cardNumber ? `<span style="color:#22c55e">✓ ${m.cardNumber}</span>` : '<span style="color:#888">Inget kort</span>'}</span>
+              </div>
+              <div class="mc-info-row">
+                <span class="mc-info-label">App-access</span>
+                <span class="mc-info-value">${data.push?.hasSubscription ? '<span style="color:#22c55e">✓ Installerad</span>' : '<span style="color:#888">Ej aktiverad</span>'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Statistik (samma som visas på kiosk) -->
+        <div class="mc-section">
+          <div class="mc-section-header">
+            <span class="mc-section-title">Statistik</span>
+          </div>
+          <div class="mc-section-content">
+            ${this.renderStats(data.stats)}
+          </div>
+        </div>
+
+        <!-- Senaste inpasseringar -->
+        <div class="mc-section">
+          <div class="mc-section-header">
+            <span class="mc-section-title">Senaste inpasseringar</span>
+          </div>
+          <div class="mc-section-content">
+            ${this.renderHistory(data.history.slice(0, 10))}
           </div>
         </div>
 
@@ -348,17 +381,6 @@ const MemberCard = {
             ${this.renderPrefs(data.prefs)}
           </div>
         </div>
-
-        <!-- Besökshistorik -->
-        <div class="mc-section">
-          <div class="mc-section-header">
-            <span class="mc-section-title">Senaste besök</span>
-            <span class="mc-section-badge">${data.history.length}</span>
-          </div>
-          <div class="mc-section-content">
-            ${this.renderHistory(data.history.slice(0, 5))}
-          </div>
-        </div>
       </div>
 
       <div class="mc-action-bar">
@@ -376,9 +398,9 @@ const MemberCard = {
   },
 
   /**
-   * Rendera access (förenklad - visar bara vad de HAR)
+   * Rendera access-text (förenklad - visar bara vad de HAR)
    */
-  renderAccess(canOpen) {
+  renderAccessText(canOpen) {
     const parts = [];
 
     if (canOpen.vegastaden) {
@@ -394,10 +416,10 @@ const MemberCard = {
     }
 
     if (parts.length === 0) {
-      return '<div class="mc-no-access">Ingen dörraccess</div>';
+      return '<span style="color:#ef4444">Ingen</span>';
     }
 
-    return `<div class="mc-access-text">✓ ${parts.join(' + ')}</div>`;
+    return `<span style="color:#22c55e">${parts.join(' + ')}</span>`;
   },
 
   /**
@@ -497,6 +519,36 @@ const MemberCard = {
         <div class="mc-pref-row">
           <span class="mc-pref-label">Geolocation check-in</span>
           <div class="mc-toggle ${p.geoCheckin ? 'mc-on' : ''}" onclick="MemberCard.togglePref('geoCheckin')"></div>
+        </div>
+      </div>
+    `;
+  },
+
+  /**
+   * Rendera statistik (samma som kiosk visar)
+   */
+  renderStats(stats) {
+    if (!stats) {
+      return '<div class="mc-journal-empty">Ingen statistik</div>';
+    }
+
+    return `
+      <div class="mc-stats-grid">
+        <div class="mc-stat-item">
+          <div class="mc-stat-value">${stats.totalVisits || 0}</div>
+          <div class="mc-stat-label">Totalt</div>
+        </div>
+        <div class="mc-stat-item">
+          <div class="mc-stat-value">${stats.monthVisits || stats.thisMonth || 0}</div>
+          <div class="mc-stat-label">Denna månad</div>
+        </div>
+        <div class="mc-stat-item">
+          <div class="mc-stat-value">${stats.streak || 0}</div>
+          <div class="mc-stat-label">Streak</div>
+        </div>
+        <div class="mc-stat-item">
+          <div class="mc-stat-value">${stats.weekAvg || '-'}</div>
+          <div class="mc-stat-label">Snitt/vecka</div>
         </div>
       </div>
     `;
