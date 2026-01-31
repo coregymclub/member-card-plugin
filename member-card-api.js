@@ -7,6 +7,7 @@ const MemberCardAPI = {
   // API endpoints
   MEMBERS_API: 'https://api.coregym.club',
   STATS_API: 'https://stats.coregym.club',
+  PUSH_API: 'https://push.coregym.club',
 
   /**
    * Beräkna ålder från personnummer eller födelsedatum
@@ -23,7 +24,9 @@ const MemberCardAPI = {
         birthDay = parseInt(pnr.substring(6, 8));
       } else if (pnr.length >= 10) {
         const yy = parseInt(pnr.substring(0, 2));
-        birthYear = yy > 30 ? 1900 + yy : 2000 + yy;
+        // Dynamisk gräns: om yy > nuvarande år + 1, anta 1900-tal
+        const currentYearShort = new Date().getFullYear() % 100;
+        birthYear = yy > currentYearShort + 1 ? 1900 + yy : 2000 + yy;
         birthMonth = parseInt(pnr.substring(2, 4));
         birthDay = parseInt(pnr.substring(4, 6));
       }
@@ -70,11 +73,10 @@ const MemberCardAPI = {
 
   /**
    * Hämta statistik (besök, etc)
+   * OBS: Ingen credentials - stats API är publikt och stödjer inte credentials med wildcard CORS
    */
   async getStats(memberId) {
-    const res = await fetch(`${this.STATS_API}/member/${memberId}/stats`, {
-      credentials: 'include'
-    });
+    const res = await fetch(`${this.STATS_API}/member/${memberId}/stats`);
     if (!res.ok) return null;
     return res.json();
   },
@@ -83,9 +85,7 @@ const MemberCardAPI = {
    * Hämta onboarding-status
    */
   async getOnboarding(memberId) {
-    const res = await fetch(`${this.STATS_API}/member/${memberId}/onboarding`, {
-      credentials: 'include'
-    });
+    const res = await fetch(`${this.STATS_API}/member/${memberId}/onboarding`);
     if (!res.ok) return null;
     return res.json();
   },
@@ -94,9 +94,7 @@ const MemberCardAPI = {
    * Hämta preferenser
    */
   async getPrefs(memberId) {
-    const res = await fetch(`${this.STATS_API}/member/${memberId}/prefs`, {
-      credentials: 'include'
-    });
+    const res = await fetch(`${this.STATS_API}/member/${memberId}/prefs`);
     if (!res.ok) return null;
     return res.json();
   },
@@ -105,9 +103,7 @@ const MemberCardAPI = {
    * Hämta besökshistorik
    */
   async getHistory(memberId) {
-    const res = await fetch(`${this.STATS_API}/member/${memberId}/history`, {
-      credentials: 'include'
-    });
+    const res = await fetch(`${this.STATS_API}/member/${memberId}/history`);
     if (!res.ok) return null;
     return res.json();
   },
@@ -124,12 +120,10 @@ const MemberCardAPI = {
   },
 
   /**
-   * Hämta push-subscription status
+   * Hämta push-subscription status från push-servicen
    */
   async getPushStatus(memberId) {
-    const res = await fetch(`${this.STATS_API}/member/${memberId}/push-status`, {
-      credentials: 'include'
-    });
+    const res = await fetch(`${this.PUSH_API}/member/${memberId}/subscription`);
     if (!res.ok) return null;
     return res.json();
   },
@@ -150,9 +144,10 @@ const MemberCardAPI = {
       this.getPushStatus(memberId).catch(() => null)
     ]);
 
-    // Beräkna ålder
-    const age = this.calculateAge(member.personalCodeNumber, member.birthDate);
+    // Beräkna ålder (Zoezi använder 'birthday' fältet)
+    const age = this.calculateAge(member.personalCodeNumber, member.birthday);
     const isMinor = age !== null && age < 18;
+    const missingPersonalNumber = !member.personalCodeNumber;
 
     // Filtrera giltiga medlemskap
     const today = new Date().toISOString().split('T')[0];
@@ -178,8 +173,8 @@ const MemberCardAPI = {
         name: member.name || `${member.firstname || ''} ${member.lastname || ''}`.trim(),
         firstName: member.firstname,
         lastName: member.lastname,
-        email: member.email,
-        phone: member.phone,
+        email: member.email || member.mail,
+        phone: member.phone || member.mobile,
         personalNumber: member.personalCodeNumber,
         address: member.address,
         zipcode: member.zipcode,
@@ -192,8 +187,10 @@ const MemberCardAPI = {
       },
       age: {
         years: age,
+        birthday: member.birthday || null,
         isMinor: isMinor,
-        isAdult: age !== null && age >= 18
+        isAdult: age !== null && age >= 18,
+        missingPersonalNumber: missingPersonalNumber
       },
       memberships: {
         active: activeCards.map(tc => ({
@@ -226,7 +223,7 @@ const MemberCardAPI = {
       stats: stats,
       onboarding: onboarding,
       prefs: prefs,
-      history: history?.visits || history || [],
+      history: history?.history || history?.visits || history || [],
       journal: journal?.entries || journal || [],
       push: pushStatus
     };
@@ -270,7 +267,6 @@ const MemberCardAPI = {
   async updatePrefs(memberId, prefs) {
     const res = await fetch(`${this.STATS_API}/member/${memberId}/prefs`, {
       method: 'PUT',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(prefs)
     });
@@ -279,17 +275,44 @@ const MemberCardAPI = {
   },
 
   /**
-   * Skicka kvitto
+   * Hämta kvittohistorik
    */
-  async sendReceipt(memberId, cardId) {
-    const res = await fetch(`${this.MEMBERS_API}/member/${memberId}/send-receipt`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cardId })
+  async getReceipts(memberId, months = 12) {
+    const res = await fetch(`${this.MEMBERS_API}/member/${memberId}/receipts?months=${months}`, {
+      credentials: 'include'
     });
-    if (!res.ok) throw new Error('Kunde inte skicka kvitto');
+    if (!res.ok) return null;
     return res.json();
+  },
+
+  /**
+   * Skicka kvitto (hämtar PDF från Zoezi, skickar via Resend)
+   */
+  async sendReceipt(memberId, trainingcardId, options = {}) {
+    const res = await fetch(`${this.MEMBERS_API}/member/${memberId}/receipt/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        trainingcardId,
+        fromDate: options.fromDate,
+        toDate: options.toDate,
+        email: options.email
+      })
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error || 'Kunde inte skicka kvitto');
+    }
+    return res.json();
+  },
+
+  /**
+   * Hämta kvitto-PDF URL
+   */
+  getReceiptDownloadUrl(memberId, trainingcardId, fromDate, toDate) {
+    let url = `${this.MEMBERS_API}/member/${memberId}/receipt/${trainingcardId}/download`;
+    if (fromDate) url += `?fromDate=${fromDate}&toDate=${toDate || new Date().toISOString().split('T')[0]}`;
+    return url;
   },
 
   /**
